@@ -1,8 +1,16 @@
 import express from "express";
-import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
+import mongoose from "mongoose";
 
 const users = [];
+
+const UserModel = mongoose.model("User", {
+  username: String,
+  fullname: String,
+  email: String,
+  password: String,
+  phone: String,
+});
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
@@ -16,7 +24,7 @@ app.get("/", (req, res) => {
   res.send("Hi mom");
 });
 
-app.post("/signup", (req, res) => {
+app.post("/signup", async (req, res) => {
   if (!req.body) {
     return res.status(400).send({ message: "Body required" });
   }
@@ -56,7 +64,7 @@ app.post("/signup", (req, res) => {
     return res.status(400).send({ message: "Password must include Upper and Lowercase letters and digit with special characters" });
   }
 
-  const existingUser = users.find((user) => user.username === body.username);
+  const existingUser = await UserModel.findOne({ username: body.username });
 
   if (existingUser) {
     return res.status(400).send({ message: `User with username "${body.username}" already exists` });
@@ -65,7 +73,6 @@ app.post("/signup", (req, res) => {
   const hashedPassword = bcrypt.hashSync(body.password, 10);
 
   const newUser = {
-    id: nanoid(),
     fullname: body.fullname,
     username: body.username,
     email,
@@ -73,22 +80,42 @@ app.post("/signup", (req, res) => {
     password: hashedPassword,
   };
 
-  users.push(newUser);
+  const user = new UserModel(newUser);
+  await user.save();
 
-  return res.send({ message: "Welcome to instagram", body: newUser });
+  return res.send({ message: "Welcome to instagram", body: user });
 });
 
 app.post("/signin", (req, res) => {
-  // TODO
-  // 1. BODY WITH 2 FIELDS
-  // 1.1 CREDENTIAL, PASSWORD
-  // 1.1.1 CREDENTIAL CAN BE EMAIL OR PHONE OR USERNAME
-  // IF 0 RECORD FOUND SEND 400 WITH MESSAGE
-  const password = req.body.password;
+  if (!req.body) {
+    return res.status(400).send({ message: "Body required" });
+  }
+  const body = req.body;
+  if (!body.credential) {
+    return res.status(400).send({ message: "Credential required" });
+  }
+  if (!body.password) {
+    return res.status(400).send({ message: "Password required" });
+  }
 
-  const isCorrectPassword = bcrypt.compareSync(password, "$2b$10$0bDVmBn1rDDwlbj7XF8gre1R4fcGuhOJjvRqlMR2EdJDHNrWyDT5S");
+  const user = users.find((item) => {
+    return item.email === body.credential || item.phone === body.credential || item.username === body.credential;
+  });
+
+  if (!user) {
+    return res.status(400).send({ message: "Wrong credentials!" });
+  }
+
+  const isCorrectPassword = bcrypt.compareSync(body.password, user.password);
+
+  if (!isCorrectPassword) {
+    return res.status(400).send({ message: "Wrong password!" });
+  }
+
+  return res.send({ message: "You are signed in", body: user });
 });
 
 app.listen(PORT, () => {
+  mongoose.connect("");
   console.log(`Your app is running on http://localhost:${PORT}`);
 });
