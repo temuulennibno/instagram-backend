@@ -2,8 +2,6 @@ import express from "express";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 
-const users = [];
-
 const UserModel = mongoose.model("User", {
   username: String,
   fullname: String,
@@ -86,7 +84,7 @@ app.post("/signup", async (req, res) => {
   return res.send({ message: "Welcome to instagram", body: user });
 });
 
-app.post("/signin", (req, res) => {
+app.post("/signin", async (req, res) => {
   if (!req.body) {
     return res.status(400).send({ message: "Body required" });
   }
@@ -98,9 +96,11 @@ app.post("/signin", (req, res) => {
     return res.status(400).send({ message: "Password required" });
   }
 
-  const user = users.find((item) => {
-    return item.email === body.credential || item.phone === body.credential || item.username === body.credential;
-  });
+  // const user = users.find((item) => {
+  //   return item.email === body.credential || item.phone === body.credential || item.username === body.credential;
+  // });
+
+  const user = await UserModel.find({ $or: [{ email: body.credential }, { phone: body.credential }, { username: body.credential }] });
 
   if (!user) {
     return res.status(400).send({ message: "Wrong credentials!" });
