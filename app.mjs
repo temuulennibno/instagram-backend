@@ -1,6 +1,10 @@
 import express from "express";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const UserModel = mongoose.model("User", {
   username: String,
@@ -12,11 +16,13 @@ const UserModel = mongoose.model("User", {
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-const PORT = 3000;
+const PORT = 5500;
 
 const app = express();
 
 app.use(express.json());
+
+app.use(cors());
 
 app.get("/", (req, res) => {
   res.send("Hi mom");
@@ -114,11 +120,14 @@ app.post("/signin", async (req, res) => {
   //   return item.email === body.credential || item.phone === body.credential || item.username === body.credential;
   // });
 
-  const user = await UserModel.find({ $or: [{ email: body.credential }, { phone: body.credential }, { username: body.credential }] });
+  const user = await UserModel.findOne({ $or: [{ email: body.credential }, { phone: body.credential }, { username: body.credential }] });
 
   if (!user) {
     return res.status(400).send({ message: "Wrong credentials!" });
   }
+
+  console.log("User password:", user.password);
+  console.log("Body password:", body.password);
 
   const isCorrectPassword = bcrypt.compareSync(body.password, user.password);
 
@@ -130,6 +139,6 @@ app.post("/signin", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  mongoose.connect("");
+  mongoose.connect(process.env.MONGO_URL);
   console.log(`Your app is running on http://localhost:${PORT}`);
 });
