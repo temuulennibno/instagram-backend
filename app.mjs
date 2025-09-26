@@ -54,6 +54,20 @@ app.post("/signup", async (req, res) => {
     return res.status(400).send({ message: "Credential must be Email or Phone number!" });
   }
 
+  if (email) {
+    const existingUserByEmail = await UserModel.findOne({ email: email });
+    if (existingUserByEmail) {
+      return res.status(400).send({ message: "User with this email already exists" });
+    }
+  }
+
+  if (phone) {
+    const existingUserByPhone = await UserModel.findOne({ phone: phone });
+    if (existingUserByPhone) {
+      return res.status(400).send({ message: "User with this phone already exists" });
+    }
+  }
+
   if (body.password.length < 8) {
     return res.status(400).send({ message: "Password must be greater than 8 characters" });
   }
